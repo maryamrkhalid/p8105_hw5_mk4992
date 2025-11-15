@@ -20,7 +20,8 @@ set.seed(8105)
 
 ```
 
-*Problem 1: Probability of Shared Birthdays*
+# Problem 1: Probability of Shared Birthdays
+
 We investigate the probability that at least two people in a room of *n* people share a birthday. 
 We assume 365 equally likely birthdays and no leap years. 
 ```{r}
@@ -63,7 +64,8 @@ sim_results %>%
 
 The curve representing the probability of at least one shared birthday looks similar to a logistic/sigmoidal growth curve. As the group size increases, the estimated probability increases following this growth curve. This probability is near zero for single-digit sizes, rises quickly between ~15 to 30 people, amd then levels off approaching 1. The probability is 0.5 when the group size is 23 people. By n = 50, the probability is ~0.973. Shared birthdays become extremely likely way before the group size reaches 365 people. 
 
-*Problem 2: Hypothesis Testing from a Normal Distribution*
+# Problem 2: Hypothesis Testing from a Normal Distribution
+
 The probability that a false null hypothesis is rejected is referred to as power, and it depends on several factors, including: the sample size; the effect size; and the error variance. We conduct a simulation to explore power in a one-sample t-test.
 
 ```{r}
@@ -138,7 +140,8 @@ Power increases as the true mean (μ) increases. When μ is close to 0, the test
 
 Across all samples, the average estimate of μ^ closely matches the true mean μ, as the indicated line on the graph closely follows y = x. This demonstrates that the estimator is unbiased. However, when restricting to only the samples in which the null hypothesis was rejected, the average μ^ is somewhat inflated above the true values of μ. This occurs because only samples with large observed effects (leading to rejected null) tend to be statistically significant, introducing selection bias. 
 
-*Problem 3: Homicide Data Across U.S. Cities*
+# Problem 3: Homicide Data Across U.S. Cities
+
 The Washington Post has gathered data on over 52,000 homicides in 50 large U.S. cities over the past decade and found that across the country, there are areas where murder is common but arrests are rare.
 
 ```{r}
