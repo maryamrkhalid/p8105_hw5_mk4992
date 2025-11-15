@@ -12,6 +12,9 @@ knitr::opts_chunk$set(
   warning = FALSE
 )
 library(tidyverse)
+library(broom)
+
+set.seed(8105)
 
 ```
 
@@ -29,8 +32,6 @@ any(duplicated(birthdays))
 
 #to get probability from z runs:
 #mean(replicate(z, simulate_shared_birthay(n)))
-
-set.seed(8105)
 
 #vector of various group sizes
 group_sizes <- 2:50
@@ -61,3 +62,83 @@ sim_results %>%
 The curve representing the probability of at least one shared birthday looks similar to a logistic/sigmoidal growth curve. As the group size increases, the estimated probability increases following this growth curve. This probability is near zero for single-digit sizes, rises quickly between ~15 to 30 people, amd then levels off approaching 1. The probability is 0.5 when the group size is 23 people. By n = 50, the probability is ~0.973. Shared birthdays become extremely likely way before the group size reaches 365 people. 
 
 *Problem 2: Hypothesis Testing from a Normal Distribution*
+The probability that a false null hypothesis is rejected is referred to as power, and it depends on several factors, including: the sample size; the effect size; and the error variance. We conduct a simulation to explore power in a one-sample t-test.
+
+```{r}
+set.seed(8105)
+
+#fixed parameters of our normal distribution
+n <- 30
+sigma <- 5
+mu_values <- 0:6 #includes 0 through 6
+
+#function will simulate dataset and return the estimated mean (mu_hat) and p-value
+simulate_power <- function(mu) {
+  x <- rnorm(n, mean = mu, sd = sigma)
+  test <- t.test(x, mu = 0)
+  
+  tibble(
+    mu_hat = mean(x),
+    p_value = tidy(test)$p.value
+  )
+}
+
+#repeat 5000 simulations for each value of mu
+sim_results <- 
+  crossing(mu_true = mu_values, sim = 1:5000) %>%
+  mutate(result = map(mu_true, simulate_power)) %>%
+  unnest(result)
+
+#Plot the Power versus True Mean
+power_results <-
+  sim_results %>%
+  group_by(mu_true) %>%
+  summarize(power = mean(p_value < 0.05))
+
+power_results %>%
+  ggplot(aes(x = mu_true, y = power)) +
+  geom_line(color = "blue", linewidth = 1) +
+  geom_point(color = "blue") +
+  labs(
+    title = "Power of One-Sample t-test vs Effect Size",
+    x = "True Mean (μ)",
+    y = "Power (Probability of Rejecting Null H)"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+#Plot the Mean Estimate versus True Mean
+mu_hat_summary <-
+  sim_results %>%
+  group_by(mu_true) %>%
+  summarize(
+    mean_mu_hat = mean(mu_hat),
+    mean_mu_hat_rejected = mean(mu_hat[p_value < 0.05])
+  )
+
+mu_hat_summary %>%
+  ggplot(aes(x = mu_true)) +
+  geom_line(aes(y = mean_mu_hat, color = "All samples"), linewidth = 1) +
+  geom_line(aes(y = mean_mu_hat_rejected, color = "Rejected only"), linewidth = 1) +
+  scale_color_manual(values = c("All samples" = "black", "Rejected only" = "red")) +
+  labs(
+    title = "Average Estimates of μ̂ vs True μ",
+    x = "True Mean (μ)",
+    y = "Average Estimate of μ̂",
+    color = ""
+  ) +
+  theme_minimal(base_size = 14)
+
+
+```
+
+Power increases as the true mean (μ) increases. When μ is close to 0, the test rarely rejects the null hypothesis, but the power rises sharply as μ becomes larger. When μ = 6, the t-test has nearly perfect power. This reflects the relationship between effect size and statistical power.
+
+Across all samples, the average estimate of μ^ closely matches the true mean μ, as the indicated line on the graph closely follows y = x. This demonstrates that the estimator is unbiased. However, when restricting to only the samples in which the null hypothesis was rejected, the average μ^ is somewhat inflated above the true values of μ. This occurs because only samples with large observed effects (leading to rejected null) tend to be statistically significant, introducing selection bias. 
+
+*Problem 3: Homicide Data Across U.S. Cities*
+The Washington Post has gathered data on over 52,000 homicides in 50 large U.S. cities over the past decade and found that across the country, there are areas where murder is common but arrests are rare.
+
+
+
+
