@@ -13,6 +13,8 @@ knitr::opts_chunk$set(
 )
 library(tidyverse)
 library(broom)
+library(janitor)
+library(purrr)
 
 set.seed(8105)
 
@@ -139,6 +141,104 @@ Across all samples, the average estimate of μ^ closely matches the true mean μ
 *Problem 3: Homicide Data Across U.S. Cities*
 The Washington Post has gathered data on over 52,000 homicides in 50 large U.S. cities over the past decade and found that across the country, there are areas where murder is common but arrests are rare.
 
+```{r}
+homicide_raw <- read_csv("data/homicide-data.csv")
+
+homicide_raw %>%
+  glimpse()
+
+```
+
+The raw dataset includes 52,179 homicide records from 50 large U.S. cities between the years 2007 and 2017. Each observation represents a single homicide case. The dataset contains variables describing the victim (first and last name, race, age, sex), date in which the case was first reported, location (city, state, longitude, latitude), and the status of the case (case closed by arrest, open/no arrest, case closed without arrest). 
+
+```{r}
+#Create city_state variable and summarize within cities to obtain total # of homicides & # of unsolved homicides
+
+homicide_city_summary <- 
+  homicide_raw %>%
+  mutate(
+    city_state = str_c(city, ", ", state),
+    unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")
+  ) %>%
+  group_by(city_state) %>%
+  summarize(
+    total = n(),
+    unsolved = sum(unsolved),
+    percentage_unsolved = unsolved/total * 100,
+    .groups = "drop"
+  )
+
+```
 
 
+```{r}
+#estimate the proportion of unsolved homicides in Baltimore, MD
+baltimore <- 
+  homicide_raw %>%
+  mutate(
+    city_state = str_c(city, ", ", state),
+    unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")
+  ) %>%
+  filter(city_state == "Baltimore, MD")
+
+# Run prop.test
+baltimore_test <- prop.test(
+  x = sum(baltimore$unsolved),
+  n = nrow(baltimore)
+)
+
+# Tidy results
+baltimore_summary <- 
+  broom::tidy(baltimore_test) %>%
+  select(estimate, conf.low, conf.high)
+
+baltimore_summary
+
+
+```
+
+The estimated proportion of unsolved homicides in Baltimore, MD is 64.6%, with the 95% CI allowing this estimated proportion to range between 62.8% to 66.3%.
+
+```{r}
+city_prop_tests <- 
+  homicide_raw %>%
+  mutate(
+    city_state = str_c(city, ", ", state),
+    unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")
+  ) %>%
+  group_by(city_state) %>%
+  summarize(
+    x = sum(unsolved),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    test = map2(x, n, ~ prop.test(.x, .y)),
+    tidy = map(test, broom::tidy)
+  ) %>%
+  unnest(tidy) %>%
+  select(city_state, estimate, conf.low, conf.high)
+
+```
+
+```{r}
+city_prop_tests %>%
+  mutate(city_state = fct_reorder(city_state, estimate)) %>%
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point(color = "blue", size = 2) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.2,
+                color = "blue") +
+  coord_flip() +
+  labs(
+    title = "Estimated Proportion of Unsolved Homicides by City",
+    x = "City",
+    y = "Estimated Proportion (with 95% CI)"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+The estimated proportion of unsolved homicides  -- homicides that remain open or were closed without an arrest -- varies substantially across the cities, ranging from as low as 25% to as high as 75%.
+
+Some cities such as Richmond, VA and Charlotte, NC show relatively low unsolved rates. Other cities such as Chicago, IL, New Orleans, LA, and Baltimore, MD show much higher proportions of unsolved cases. 
 
